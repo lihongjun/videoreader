@@ -30,7 +30,7 @@
 %%%---------------------------------------------------------------------------------------
 -module(videoreader).
 -author('Max Lapshin <max@maxidoors.ru>').
--include_lib("erlyvideo/include/rtmp_session.hrl").
+-include_lib("erlyvideo/include/video_frame.hrl").
 -include_lib("rtmp/include/rtmp.hrl").
 -include_lib("stdlib/include/ms_transform.hrl").
 -define(D(X), io:format("DEBUG ~p:~p ~p~n",[?MODULE, ?LINE, X])).
@@ -41,14 +41,16 @@
 % PLUGIN API
 -export([start/0, stop/0]).
 
--export([start_link/1]).
+-export([start_link/3]).
 
 %% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
-         code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
 -record(videoreader, {
-  path
+  host,
+  name,
+  path,
+  player
 }).
 	
 
@@ -62,8 +64,8 @@ stop() ->
 
 
 
-start_link(Path) ->
-  gen_server:start_link({local, ?MODULE}, ?MODULE, [Path], []).
+start_link(Host, Name, Path) ->
+  gen_server:start_link({local, ?MODULE}, ?MODULE, [Host, Name, Path], []).
 
 
 
@@ -84,8 +86,9 @@ start_link(Path) ->
 %%----------------------------------------------------------------------
 
 
-init([Path]) ->
-  {ok, #videoreader{path = Path}}.
+init([Host, Name, Path]) ->
+  self() ! start,
+  {ok, #videoreader{host = Host, name = Name, path = Path}}.
 
 %%-------------------------------------------------------------------------
 %% @spec (Request, From, State) -> {reply, Reply, State}          |
@@ -127,8 +130,21 @@ handle_cast(_Msg, State) ->
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
+handle_info(start, State) ->
+  {noreply, play(State)};
+  
+handle_info(#video_frame{type = Type, dts = DTS} = _Frame, State) ->
+  io:format("~p ~p~n", [Type, DTS]),
+  {noreply, State};
+
 handle_info(_Info, State) ->
   {noreply, State}.
+
+
+play(#videoreader{host = Host, name = Name} = State) ->
+  {ok, Player} = media_provider:play(Host, Name, [{stream_id, 1}, {client_buffer, 0}]),
+  io:format("Videoreader started reading ~s:~s~n", [Host, Name]),
+  State#videoreader{player = Player}.
 
 %%-------------------------------------------------------------------------
 %% @spec (Reason, State) -> any
