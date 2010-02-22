@@ -1,0 +1,16 @@
+Example plugin for erlyvideo.
+
+Add following line to erlmedia.conf out of virtual hosts:
+
+{modules, [videoreader]}.
+
+This line MUST be out of virtual hosts, because plugins must be started out of virtual hosts.
+Clone videoreader into plugins folder of erlyvideo. 
+
+After this restart erlyvideo and videoreader application should be started among others.
+
+Next:
+
+{ok, Pid} = videoreader:start_reader(Host, Name, Path).
+
+Client will be started and will start to consume frames.
