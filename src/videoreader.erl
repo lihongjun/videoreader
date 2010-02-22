@@ -32,8 +32,11 @@
 -author('Max Lapshin <max@maxidoors.ru>').
 
 % PLUGIN API
--export([start/0, stop/0]).
+-export([start/0, stop/0, start_reader/3]).
 
+
+start_reader(Host, Name, Path) ->
+  videoreader_sup:start_reader(Host, Name, Path).
 
 start() -> 
   application:start(videoreader).

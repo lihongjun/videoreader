@@ -133,7 +133,8 @@ handle_info(_Info, State) ->
 
 play(#videoreader{host = Host, name = Name} = State) ->
   {ok, Player} = media_provider:play(Host, Name, [{stream_id, 1}, {client_buffer, 0}]),
-  io:format("Videoreader started reading ~s:~s~n", [Host, Name]),
+  io:format("Videoreader started reading ~s:~s ~p~n", [Host, Name, Player]),
+  Player ! start,
   State#videoreader{player = Player}.
 
 %%-------------------------------------------------------------------------
