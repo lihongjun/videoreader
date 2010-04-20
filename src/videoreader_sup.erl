@@ -39,6 +39,13 @@ init([video_reader]) ->
 
 init([]) ->
   Supervisors = [
+    {   videoreader_event_sup,                         % Id       = internal id
+        {videoreader_event,start_link,[]},             % StartFun = {M, F, A}
+        permanent,                               % Restart  = permanent | transient | temporary
+        2000,                                    % Shutdown = brutal_kill | int() >= 0 | infinity
+        worker,                                  % Type     = worker | supervisor
+        [videoreader_event]                               % Modules  = [Module] | dynamic
+    },
     {   video_reader_sup,
         {supervisor,start_link,[{local, video_reader_sup}, ?MODULE, [video_reader]]},
         permanent,                               % Restart  = permanent | transient | temporary

@@ -1,6 +1,6 @@
 %%% @author     Max Lapshin <max@maxidoors.ru> [http://erlyvideo.org]
 %%% @copyright  2009 Max Lapshin
-%%% @doc        Worker module for plugin example
+%%% @doc        Central point of erlyvideo events
 %%% @reference  See <a href="http://erlyvideo.org/" target="_top">http://erlyvideo.org/</a> for more information
 %%% @end
 %%%
@@ -28,114 +28,92 @@
 %%% THE SOFTWARE.
 %%%
 %%%---------------------------------------------------------------------------------------
--module(video_reader).
+-module(videoreader_event).
 -author('Max Lapshin <max@maxidoors.ru>').
--include_lib("erlmedia/include/video_frame.hrl").
--include_lib("rtmp/include/rtmp.hrl").
--include_lib("stdlib/include/ms_transform.hrl").
--define(D(X), io:format("DEBUG ~p:~p ~p~n",[?MODULE, ?LINE, X])).
-
--behaviour(gen_server).
+-behaviour(gen_event).
 
 
+%% External API
 
--export([start_link/3]).
+-export([start_link/0, listen/0]).
 
-%% gen_server callbacks
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+%% gen_event callbacks
+-export([init/1, handle_call/2, handle_event/2, handle_info/2, terminate/2, code_change/3]).
 
--record(videoreader, {
-  host,
-  name,
-  path,
-  player
-}).
-	
-
-
-
-start_link(Host, Name, Path) ->
-  gen_server:start_link(?MODULE, [Host, Name, Path], []).
-
-
+start_link() ->
+  Pid = spawn_link(?MODULE, listen, []),
+  {ok, Pid}.
+  
+listen() ->
+  ems_event:add_sup_handler(?MODULE, []),
+  receive
+    Msg ->
+      io:format("Videoreader eventer ~p~n", [Msg])
+  end.
+  
 
 
 %%%------------------------------------------------------------------------
-%%% Callback functions from gen_server
+%%% Callback functions from gen_event
 %%%------------------------------------------------------------------------
 
 %%----------------------------------------------------------------------
-%% @spec (Port::integer()) -> {ok, State}           |
-%%                            {ok, State, Timeout}  |
-%%                            ignore                |
-%%                            {stop, Reason}
+%% @spec (InitArgs) -> {ok, State}           |
+%%                     {ok, State, hibernate}
 %%
-%% @doc Called by gen_server framework at process startup.
-%%      Create listening socket.
+%% @doc Called by gen_event framework at process startup.
 %% @end
 %%----------------------------------------------------------------------
 
-
-init([Host, Name, Path]) ->
-  self() ! start,
-  {ok, #videoreader{host = Host, name = Name, path = Path}}.
+init([]) ->
+  {ok, state}.
 
 %%-------------------------------------------------------------------------
-%% @spec (Request, From, State) -> {reply, Reply, State}          |
-%%                                 {reply, Reply, State, Timeout} |
-%%                                 {noreply, State}               |
-%%                                 {noreply, State, Timeout}      |
-%%                                 {stop, Reason, Reply, State}   |
-%%                                 {stop, Reason, State}
-%% @doc Callback for synchronous server calls.  If `{stop, ...}' tuple
+%% @spec (Event, State) -> {ok, NewState}            |
+%%                         {ok, NewState, hibernate} |
+%%                         {swap_handler,Args1,NewState,Handler2,Args2} |
+%%                         remove_handler
+%% @doc Callback for events.
+%% @end
+%% @private
+%%-------------------------------------------------------------------------
+handle_event({stream_started, Host, Name, Stream}, State) ->
+  {ok, Pid} = videoreader:start_reader(Host, Name, <<"/tmp/", Name/binary>>),
+  io:format("Videoreader going to consume ~s@~p: ~p~n", [Name, Host,Pid]),
+  {ok,State};
+  
+handle_event(_Msg, State) ->
+  % io:format("Nice videoreader_events ~p~n", [_Msg]),
+  {ok, State}.
+
+%%-------------------------------------------------------------------------
+%% @spec (Request, State) -> {ok, Reply, NewState}            |
+%%                           {ok, Reply, NewState, hibernate} |
+%%                           {swap_handler,Reply,Args1,NewState,Handler2,Args2} |
+%%                           {remove_handler,Reply}
+%% @doc Callback for synchronous events.  If `{stop, ...}' tuple
 %%      is returned, the server is stopped and `terminate/2' is called.
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
+handle_call(Request, State) ->
+  {ok, Request, State}.
 
 
-handle_call(Request, _From, State) ->
-  {stop, {unknown_call, Request}, State}.
-
-
-%%-------------------------------------------------------------------------
-%% @spec (Msg, State) ->{noreply, State}          |
-%%                      {noreply, State, Timeout} |
-%%                      {stop, Reason, State}
-%% @doc Callback for asyncrous server calls.  If `{stop, ...}' tuple
-%%      is returned, the server is stopped and `terminate/2' is called.
-%% @end
-%% @private
-%%-------------------------------------------------------------------------
-handle_cast(_Msg, State) ->
-  {stop, {unknown_cast, _Msg}, State}.
 
 %%-------------------------------------------------------------------------
-%% @spec (Msg, State) ->{noreply, State}          |
-%%                      {noreply, State, Timeout} |
-%%                      {stop, Reason, State}
+%% @spec (Msg, State) ->{ok, NewState}          |
+%%                      {ok, NewState, hibernate} 
+%%                      {swap_handler,Args1,NewState,Handler2,Args2} |
+%%                      remove_handler
 %% @doc Callback for messages sent directly to server's mailbox.
 %%      If `{stop, ...}' tuple is returned, the server is stopped and
 %%      `terminate/2' is called.
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
-handle_info(start, State) ->
-  {noreply, play(State)};
-  
-handle_info(#video_frame{type = Type, dts = DTS} = _Frame, State) ->
-  io:format("~p ~p~n", [Type, DTS]),
-  {noreply, State};
-
 handle_info(_Info, State) ->
-  {noreply, State}.
-
-
-play(#videoreader{host = Host, name = Name} = State) ->
-  {ok, Player} = media_provider:play(Host, Name, [{stream_id, 1}, {client_buffer, 0}]),
-  io:format("Videoreader started reading ~s:~s ~p~n", [Host, Name, Player]),
-  Player ! start,
-  State#videoreader{player = Player}.
+  {ok, State}.
 
 %%-------------------------------------------------------------------------
 %% @spec (Reason, State) -> any
