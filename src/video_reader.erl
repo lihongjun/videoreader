@@ -123,8 +123,8 @@ handle_cast(_Msg, State) ->
 handle_info(start, State) ->
   {noreply, play(State)};
   
-handle_info(#video_frame{type = Type, dts = DTS} = _Frame, State) ->
-  io:format("~p ~p~n", [Type, DTS]),
+handle_info(#video_frame{content = Content, dts = DTS, flavor = Flavor} = _Frame, State) ->
+  io:format("~p ~p ~p~n", [Content, DTS, Flavor]),
   {noreply, State};
 
 handle_info(_Info, State) ->
