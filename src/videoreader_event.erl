@@ -77,9 +77,9 @@ init([]) ->
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
-handle_event({stream_started, Host, Name, Stream}, State) ->
+handle_event({stream_started, Host, Name, _Stream, Options}, State) ->
   {ok, Pid} = videoreader:start_reader(Host, Name, <<"/tmp/", Name/binary>>),
-  io:format("Videoreader going to consume ~s@~p: ~p~n", [Name, Host,Pid]),
+  io:format("Videoreader going to consume ~s@~p: ~p (~p)~n", [Name, Host,Pid,Options]),
   {ok,State};
   
 handle_event(_Msg, State) ->
