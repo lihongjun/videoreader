@@ -10,6 +10,6 @@
   ]},
  {registered,[videoreader]},
  {applications, [kernel,stdlib]},
- {mod, {videoreader,[]}},
+ {mod, {videoreader_app,[]}}
 ]}.
 
