@@ -31,7 +31,7 @@
 -module(videoreader_event).
 -author('Max Lapshin <max@maxidoors.ru>').
 -behaviour(gen_event).
-
+-include_lib("erlyvideo/include/erlyvideo.hrl").
 
 %% External API
 
@@ -77,13 +77,13 @@ init([]) ->
 %% @end
 %% @private
 %%-------------------------------------------------------------------------
-handle_event({stream_started, Host, Name, _Stream, Options}, State) ->
+handle_event(#erlyvideo_event{event = stream_started, host = Host, stream_name = Name, options = Options}, State) ->
   {ok, Pid} = videoreader:start_reader(Host, Name, <<"/tmp/", Name/binary>>),
   io:format("Videoreader going to consume ~s@~p: ~p (~p)~n", [Name, Host,Pid,Options]),
   {ok,State};
   
 handle_event(_Msg, State) ->
-  % io:format("Nice videoreader_events ~p~n", [_Msg]),
+  io:format("Nice videoreader_events ~p~n", [_Msg]),
   {ok, State}.
 
 %%-------------------------------------------------------------------------

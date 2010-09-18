@@ -1,6 +1,6 @@
 
 all:
-	erl -make
+	ERL_LIBS=.. erl -make
 	
 clean:
 	rm -fv ebin/*.beam
